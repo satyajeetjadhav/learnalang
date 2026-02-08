@@ -15,6 +15,7 @@ import {
   RiArticleLine,
   RiToolsLine,
 } from "react-icons/ri";
+import { SettingsButton } from "./sidebar";
 import { cn } from "@/lib/utils";
 
 const PAGE_COMPONENTS = {
@@ -58,6 +59,7 @@ function MobileNav() {
             </button>
           );
         })}
+        <SettingsButton collapsed={true} variant="mobile" />
       </div>
     </nav>
   );

@@ -159,7 +159,7 @@ export function Sidebar() {
   );
 }
 
-function SettingsButton({ collapsed }: { collapsed: boolean }) {
+export function SettingsButton({ collapsed, variant = "sidebar" }: { collapsed: boolean; variant?: "sidebar" | "mobile" }) {
   const { openaiApiKey, setOpenaiApiKey } = useSettingsStore();
   const [draft, setDraft] = useState(openaiApiKey);
   const [open, setOpen] = useState(false);
@@ -187,22 +187,34 @@ function SettingsButton({ collapsed }: { collapsed: boolean }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "w-full justify-start gap-3 text-sidebar-foreground/50 hover:text-sidebar-foreground",
-            collapsed && "justify-center px-0"
-          )}
-        >
-          <div className="relative">
-            <RiSettings3Line className="h-4 w-4 shrink-0" />
-            {hasKey && (
-              <div className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        {variant === "mobile" ? (
+          <button className="flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-muted-foreground/80 transition-colors">
+            <div className="relative">
+              <RiSettings3Line className="h-5 w-5" />
+              {hasKey && (
+                <div className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              )}
+            </div>
+            <span className="font-mono text-[9px]">Settings</span>
+          </button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "w-full justify-start gap-3 text-sidebar-foreground/50 hover:text-sidebar-foreground",
+              collapsed && "justify-center px-0"
             )}
-          </div>
-          {!collapsed && <span className="text-xs">Settings</span>}
-        </Button>
+          >
+            <div className="relative">
+              <RiSettings3Line className="h-4 w-4 shrink-0" />
+              {hasKey && (
+                <div className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              )}
+            </div>
+            {!collapsed && <span className="text-xs">Settings</span>}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
