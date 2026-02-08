@@ -22,6 +22,9 @@ import {
   RiDeleteBinLine,
   RiLightbulbLine,
   RiRefreshLine,
+  RiAddLine,
+  RiCheckLine,
+  RiBookOpenLine,
 } from "react-icons/ri";
 import { InteractiveText } from "./interactive-text";
 import type { ReaderSession } from "@/stores/reader-store";
@@ -55,12 +58,16 @@ export function ReaderPage() {
     generatedText,
     loading,
     sessions,
+    newVocab,
+    savedWordIds,
     setSelectedLang,
     setDifficulty,
     setTopic,
     generateStory,
     loadSession,
     deleteSession,
+    saveWord,
+    saveAllNewWords,
   } = useReaderStore();
 
   // Split the generated text into sections (native, transliteration, translation)
@@ -188,11 +195,14 @@ export function ReaderPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-xl leading-relaxed font-medium">
-                  <InteractiveText text={sections[0]} lang={selectedLang} />
+                  <InteractiveText text={sections[0]} lang={selectedLang} newVocab={newVocab} />
                 </p>
               </CardContent>
             </Card>
           )}
+
+          {/* New Words Strip */}
+          {newVocab.length > 0 && <NewWordsStrip />}
 
           {/* Transliteration */}
           {sections[1] && (
@@ -297,7 +307,7 @@ export function ReaderPage() {
             <RiHistoryLine className="h-4 w-4" />
             Past Sessions ({sessions.length})
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {sessions.map((s) => (
               <SessionCard
                 key={s.id}
@@ -310,6 +320,80 @@ export function ReaderPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function NewWordsStrip() {
+  const newVocab = useReaderStore((s) => s.newVocab);
+  const savedWordIds = useReaderStore((s) => s.savedWordIds);
+  const saveWord = useReaderStore((s) => s.saveWord);
+  const saveAllNewWords = useReaderStore((s) => s.saveAllNewWords);
+
+  const unsavedCount = newVocab.filter((w) => !savedWordIds.has(w.id)).length;
+  const allSaved = unsavedCount === 0;
+
+  return (
+    <Card className="border-amber-500/20 bg-amber-500/5">
+      <CardContent className="p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <RiBookOpenLine className="h-4 w-4 text-amber-400" />
+            <span className="font-mono text-xs text-amber-300">
+              {newVocab.length} new word{newVocab.length !== 1 ? "s" : ""}
+            </span>
+            {!allSaved && (
+              <Badge variant="outline" className="border-amber-500/30 font-mono text-[10px] text-amber-400">
+                {unsavedCount} unsaved
+              </Badge>
+            )}
+          </div>
+          {!allSaved && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-auto gap-1.5 font-mono text-xs"
+              onClick={saveAllNewWords}
+            >
+              <RiAddLine className="h-3.5 w-3.5" />
+              Save All to Word List
+            </Button>
+          )}
+          {allSaved && (
+            <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] text-emerald-400">
+              <RiCheckLine className="h-3.5 w-3.5" />
+              All saved
+            </span>
+          )}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {newVocab.map((w) => {
+            const isSaved = savedWordIds.has(w.id);
+            return (
+              <button
+                key={w.id}
+                disabled={isSaved}
+                onClick={() => saveWord(w)}
+                className={`flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-xs transition-all ${
+                  isSaved
+                    ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-400/80"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-300 hover:border-amber-400 hover:bg-amber-500/20"
+                }`}
+              >
+                {isSaved ? (
+                  <RiCheckLine className="h-3 w-3" />
+                ) : (
+                  <RiAddLine className="h-3 w-3" />
+                )}
+                {w.targetWord}
+                <span className="text-[10px] text-muted-foreground">
+                  {w.englishMeaning}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -421,12 +505,12 @@ function SessionCard({
 
   return (
     <Card
-      className="group cursor-pointer border-border/50 bg-card/60 transition-colors hover:border-primary/30"
+      className="group cursor-pointer overflow-hidden border-border/50 bg-card/60 transition-colors hover:border-primary/30"
       onClick={() => onLoad(session)}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <div className="flex items-center gap-2">
               <Badge
                 variant="secondary"
@@ -453,7 +537,7 @@ function SessionCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+            className="h-7 w-7 shrink-0 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(session.id);

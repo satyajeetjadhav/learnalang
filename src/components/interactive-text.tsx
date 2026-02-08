@@ -1,15 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import { getWordsByLang, type Word } from "@/data/words";
+import { getAllWordsByLang, type Word } from "@/data/words";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { SpeakButton } from "./speak-button";
-import { decompose, type MorphBreakdown } from "@/lib/morphology";
+import { decompose } from "@/lib/morphology";
+import { RiAddLine, RiCheckLine } from "react-icons/ri";
+import { useReaderStore } from "@/stores/reader-store";
 
 const LANG_COLORS: Record<string, string> = {
   kn: "text-kannada",
@@ -20,6 +23,7 @@ const LANG_COLORS: Record<string, string> = {
 interface InteractiveTextProps {
   text: string;
   lang: string;
+  newVocab?: Word[];
 }
 
 /**
@@ -61,9 +65,9 @@ function findMatch(token: string, wordMap: Map<string, Word>, words: Word[]): Wo
   return null;
 }
 
-export function InteractiveText({ text, lang }: InteractiveTextProps) {
+export function InteractiveText({ text, lang, newVocab = [] }: InteractiveTextProps) {
   const { wordMap, sortedWords } = useMemo(() => {
-    const allWords = getWordsByLang(lang);
+    const allWords = getAllWordsByLang(lang);
     const map = new Map<string, Word>();
     for (const w of allWords) {
       map.set(w.targetWord, w);
@@ -75,6 +79,17 @@ export function InteractiveText({ text, lang }: InteractiveTextProps) {
     return { wordMap: map, sortedWords: sorted };
   }, [lang]);
 
+  const { vocabMap, sortedVocab } = useMemo(() => {
+    const map = new Map<string, Word>();
+    for (const w of newVocab) {
+      map.set(w.targetWord, w);
+    }
+    const sorted = [...newVocab].sort(
+      (a, b) => b.targetWord.length - a.targetWord.length
+    );
+    return { vocabMap: map, sortedVocab: sorted };
+  }, [newVocab]);
+
   const tokens = useMemo(() => tokenize(text), [text]);
 
   return (
@@ -84,12 +99,19 @@ export function InteractiveText({ text, lang }: InteractiveTextProps) {
           return <span key={i}>{token.value}</span>;
         }
 
+        // First try known words
         const match = findMatch(token.value, wordMap, sortedWords);
-        if (!match) {
-          return <span key={i}>{token.value}</span>;
+        if (match) {
+          return <WordHover key={i} token={token.value} word={match} lang={lang} />;
         }
 
-        return <WordHover key={i} token={token.value} word={match} lang={lang} />;
+        // Then try new vocab
+        const vocabMatch = findMatch(token.value, vocabMap, sortedVocab);
+        if (vocabMatch) {
+          return <NewWordHover key={i} token={token.value} word={vocabMatch} lang={lang} />;
+        }
+
+        return <span key={i}>{token.value}</span>;
       })}
     </span>
   );
@@ -105,10 +127,10 @@ function WordHover({ token, word, lang }: { token: string; word: Word; lang: str
   }, [token, word, isInflected]);
 
   return (
-    <HoverCard openDelay={200} closeDelay={100}>
-      <HoverCardTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <span
-          className={`cursor-help rounded-sm border-b border-dashed transition-colors hover:bg-primary/5 ${
+          className={`cursor-pointer rounded-sm border-b border-dashed transition-colors hover:bg-primary/5 active:bg-primary/10 ${
             isInflected
               ? "border-amber-400/40 hover:border-amber-400"
               : "border-primary/30 hover:border-primary"
@@ -116,8 +138,8 @@ function WordHover({ token, word, lang }: { token: string; word: Word; lang: str
         >
           {token}
         </span>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-80 p-4" side="top" align="center">
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-4" side="top" align="center">
         {/* Morphology breakdown (shown when word is inflected) */}
         {morph && (
           <div className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
@@ -199,7 +221,101 @@ function WordHover({ token, word, lang }: { token: string; word: Word; lang: str
             </div>
           )}
         </div>
-      </HoverCardContent>
-    </HoverCard>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function NewWordHover({ token, word, lang }: { token: string; word: Word; lang: string }) {
+  const langColor = LANG_COLORS[lang] ?? "";
+  const savedWordIds = useReaderStore((s) => s.savedWordIds);
+  const saveWord = useReaderStore((s) => s.saveWord);
+  const isSaved = savedWordIds.has(word.id);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <span
+          className={`cursor-pointer rounded-sm border-b transition-colors hover:bg-amber-500/5 active:bg-amber-500/10 ${
+            isSaved
+              ? "border-primary/30 border-dashed hover:border-primary"
+              : "border-amber-400/50 border-dotted hover:border-amber-400"
+          } ${langColor}`}
+        >
+          {token}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-4" side="top" align="center">
+        {/* New word indicator */}
+        {!isSaved && (
+          <div className="mb-3 flex items-center gap-2">
+            <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 font-mono text-[10px] uppercase">
+              New Word
+            </Badge>
+          </div>
+        )}
+
+        {/* Target word */}
+        <div className="flex items-center justify-between">
+          <p className={`text-2xl font-bold ${langColor}`}>
+            {word.targetWord}
+          </p>
+          <SpeakButton text={word.targetWord} lang={lang} />
+        </div>
+        {word.phoneticScript && (
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+            /{word.phoneticScript}/
+          </p>
+        )}
+
+        {/* English meaning */}
+        <p className="mt-2 text-sm font-medium">{word.englishMeaning}</p>
+
+        {/* Grammar badge */}
+        {word.grammar && (
+          <Badge variant="secondary" className="mt-1.5 font-mono text-[10px] uppercase">
+            {word.grammar.pos}
+            {word.grammar.gender ? ` · ${word.grammar.gender}` : ""}
+          </Badge>
+        )}
+
+        {/* Anchors */}
+        <div className="mt-3 space-y-1.5">
+          {word.marathiAnchor && (
+            <div className="flex items-center justify-between rounded border border-border/50 bg-muted/20 px-2.5 py-1.5">
+              <span className="text-sm">{word.marathiAnchor}</span>
+              <span className="font-mono text-[10px] text-muted-foreground/80">मराठी</span>
+            </div>
+          )}
+          {word.hindiAnchor && (
+            <div className="flex items-center justify-between rounded border border-border/50 bg-muted/20 px-2.5 py-1.5">
+              <span className="text-sm">{word.hindiAnchor}</span>
+              <span className="font-mono text-[10px] text-muted-foreground/80">हिन्दी</span>
+            </div>
+          )}
+        </div>
+
+        {/* Save button */}
+        <Button
+          variant={isSaved ? "secondary" : "default"}
+          size="sm"
+          className="mt-3 w-full gap-2 font-mono text-xs"
+          disabled={isSaved}
+          onClick={() => saveWord(word)}
+        >
+          {isSaved ? (
+            <>
+              <RiCheckLine className="h-3.5 w-3.5" />
+              Saved to Word List
+            </>
+          ) : (
+            <>
+              <RiAddLine className="h-3.5 w-3.5" />
+              Save Word
+            </>
+          )}
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 }

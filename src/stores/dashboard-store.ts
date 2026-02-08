@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { ALL_WORDS } from "@/data/words";
+import { getUserWords } from "@/data/user-words";
 import { getStats, ensureAllCards } from "@/data/srs-storage";
 
 interface LangStats {
@@ -34,8 +35,9 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
   stats: emptyStats,
   loading: false,
   fetchStats: () => {
-    ensureAllCards(ALL_WORDS);
-    const stats = getStats(ALL_WORDS);
+    const allWords = [...ALL_WORDS, ...getUserWords()];
+    ensureAllCards(allWords);
+    const stats = getStats(allWords);
     set({ stats, loading: false });
   },
 }));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback } from "react";
 import { useReviewStore } from "@/stores/review-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,20 +15,14 @@ import {
   RiArrowRightLine,
   RiShuffleLine,
   RiTimeLine,
-  RiBarChartLine,
-  RiThumbUpLine,
   RiStackLine,
 } from "react-icons/ri";
 import { SpeakButton } from "./speak-button";
 import { AksharaBreakdown } from "./akshara-breakdown";
 import { GrammarBadges } from "./grammar-badges";
 
-const RATING_BUTTONS = [
-  { rating: 0, label: "Again", hint: "Forgot", key: "1", color: "hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30", activeColor: "bg-red-500/20 text-red-400 border-red-500/30" },
-  { rating: 1, label: "Hard", hint: "Struggled", key: "2", color: "hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/30", activeColor: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
-  { rating: 2, label: "Good", hint: "Got it", key: "3", color: "hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-500/30", activeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
-  { rating: 3, label: "Easy", hint: "Instant", key: "4", color: "hover:bg-sky-500/20 hover:text-sky-400 hover:border-sky-500/30", activeColor: "bg-sky-500/20 text-sky-400 border-sky-500/30" },
-];
+// Default rating for SM-2: "Good" (2) — maps to quality 4
+const DEFAULT_RATING = 2;
 
 const LANG_COLORS: Record<string, string> = {
   kn: "text-kannada",
@@ -67,13 +61,10 @@ export function ReviewPage() {
     ? Math.round((currentIndex / queue.length) * 100)
     : 0;
 
-  const handleRating = useCallback(
-    (rating: number) => {
-      if (!currentItem || !flipped) return;
-      submitReview(currentItem.word.id, rating);
-    },
-    [currentItem, flipped, submitReview]
-  );
+  const markDone = useCallback(() => {
+    if (!currentItem || !flipped) return;
+    submitReview(currentItem.word.id, DEFAULT_RATING);
+  }, [currentItem, flipped, submitReview]);
 
   // Keyboard shortcuts for review
   useEffect(() => {
@@ -101,27 +92,17 @@ export function ReviewPage() {
       }
       if (e.key === "ArrowRight") {
         e.preventDefault();
-        nextCard();
-      }
-
-      // Rating keys only when flipped
-      if (flipped && currentItem) {
-        const ratingMap: Record<string, number> = {
-          "1": 0,
-          "2": 1,
-          "3": 2,
-          "4": 3,
-        };
-        if (ratingMap[e.key] !== undefined) {
-          e.preventDefault();
-          handleRating(ratingMap[e.key]);
+        if (flipped && currentItem) {
+          markDone();
+        } else {
+          nextCard();
         }
       }
     }
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [flipped, currentItem, handleRating, setFlipped, nextCard, prevCard]);
+  }, [flipped, currentItem, markDone, setFlipped, nextCard, prevCard]);
 
   // Loading state
   if (loading) {
@@ -182,25 +163,11 @@ export function ReviewPage() {
 
   // Complete state with session stats
   if (isComplete && queue.length > 0) {
-    const { ratings, startTime } = sessionStats;
+    const { startTime } = sessionStats;
     const elapsedMs = startTime > 0 ? Date.now() - startTime : 0;
     const minutes = Math.floor(elapsedMs / 60000);
     const seconds = Math.floor((elapsedMs % 60000) / 1000);
     const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-    const avgRating =
-      ratings.length > 0
-        ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
-        : "—";
-    const ratingLabels = ["Again", "Hard", "Good", "Easy"];
-    const ratingCounts = [0, 1, 2, 3].map(
-      (r) => ratings.filter((v) => v === r).length
-    );
-    const accuracyPct =
-      ratings.length > 0
-        ? Math.round(
-            (ratings.filter((r) => r >= 2).length / ratings.length) * 100
-          )
-        : 0;
 
     return (
       <div className="space-y-6">
@@ -222,99 +189,33 @@ export function ReviewPage() {
               You reviewed {queue.length} card{queue.length !== 1 ? "s" : ""}
             </p>
 
-            {/* Mini pip summary showing rating colors */}
+            {/* Mini pip summary */}
             <div className="mt-4 flex gap-1">
-              {ratings.map((r, i) => {
-                const colors = [
-                  "bg-red-400",
-                  "bg-orange-400",
-                  "bg-emerald-400",
-                  "bg-sky-400",
-                ];
-                return (
-                  <div
-                    key={i}
-                    className={`h-2 w-2 rounded-full ${colors[r]} animate-fade-up`}
-                    style={{ animationDelay: `${i * 40}ms` }}
-                  />
-                );
-              })}
+              {Array.from({ length: queue.length }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-2 w-2 rounded-full bg-emerald-400 animate-fade-up"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                />
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Stats */}
+        <div className="flex justify-center">
           <Card className="border-border/50 bg-card/60 animate-fade-up" style={{ animationDelay: "100ms" }}>
-            <CardContent className="flex flex-col items-center py-6">
-              <RiTimeLine className="mb-2 h-6 w-6 text-muted-foreground/60" />
-              <p className="font-mono text-3xl font-bold">{timeStr}</p>
-              <p className="mt-1.5 font-mono text-sm text-muted-foreground">
-                Duration
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50 bg-card/60 animate-fade-up" style={{ animationDelay: "150ms" }}>
-            <CardContent className="flex flex-col items-center py-6">
-              <RiThumbUpLine className="mb-2 h-6 w-6 text-muted-foreground/60" />
-              <p className="font-mono text-3xl font-bold">{accuracyPct}%</p>
-              <p className="mt-1.5 font-mono text-sm text-muted-foreground">
-                Accuracy (Good+Easy)
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50 bg-card/60 animate-fade-up" style={{ animationDelay: "200ms" }}>
-            <CardContent className="flex flex-col items-center py-6">
-              <RiBarChartLine className="mb-2 h-6 w-6 text-muted-foreground/60" />
-              <p className="font-mono text-3xl font-bold">{avgRating}</p>
-              <p className="mt-1.5 font-mono text-sm text-muted-foreground">
-                Avg Rating
-              </p>
+            <CardContent className="flex items-center gap-3 px-6 py-4">
+              <RiTimeLine className="h-5 w-5 text-muted-foreground/60" />
+              <div>
+                <p className="font-mono text-2xl font-bold">{timeStr}</p>
+                <p className="font-mono text-xs text-muted-foreground">
+                  for {queue.length} card{queue.length !== 1 ? "s" : ""}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Rating breakdown */}
-        <Card className="border-border/50 bg-card/60 animate-fade-up" style={{ animationDelay: "250ms" }}>
-          <CardContent className="py-6">
-            <p className="mb-4 font-mono text-sm text-muted-foreground">
-              Rating Breakdown
-            </p>
-            <div className="flex gap-4">
-              {ratingLabels.map((label, i) => {
-                const count = ratingCounts[i];
-                const pct =
-                  ratings.length > 0
-                    ? Math.round((count / ratings.length) * 100)
-                    : 0;
-                const colors = [
-                  "bg-red-500/20 text-red-400",
-                  "bg-orange-500/20 text-orange-400",
-                  "bg-emerald-500/20 text-emerald-400",
-                  "bg-sky-500/20 text-sky-400",
-                ];
-                return (
-                  <div key={label} className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {label}
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {count}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-muted/30">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${colors[i]?.split(" ")[0]}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
 
         <div className="flex justify-center">
           <Button
@@ -509,34 +410,8 @@ export function ReviewPage() {
         </div>
       )}
 
-      {/* Rating Buttons */}
-      <div className="space-y-2 pt-2">
-        <p className={`text-center font-mono text-xs transition-opacity duration-300 ${flipped ? "text-muted-foreground" : "text-muted-foreground/0"}`}>
-          How well did you recall?
-        </p>
-        <div className="flex justify-center gap-3 sm:gap-4">
-          {RATING_BUTTONS.map((btn) => (
-            <Button
-              key={btn.rating}
-              variant="outline"
-              disabled={!flipped}
-              className={`w-24 flex-col gap-1 py-4 font-mono transition-all sm:w-28 ${btn.color} ${
-                !flipped ? "opacity-30" : ""
-              }`}
-              onClick={() => handleRating(btn.rating)}
-            >
-              <span className="text-sm font-medium">{btn.label}</span>
-              <span className="text-[10px] text-muted-foreground/70">{btn.hint}</span>
-              <kbd className="text-[10px] text-muted-foreground/60">
-                {btn.key}
-              </kbd>
-            </Button>
-          ))}
-        </div>
-      </div>
-
       {/* Navigation Buttons */}
-      <div className="flex justify-center items-center gap-3 pt-1">
+      <div className="flex justify-center items-center gap-3 pt-2">
         <Button
           variant="outline"
           size="sm"
@@ -552,7 +427,10 @@ export function ReviewPage() {
           size="sm"
           disabled={queue.length <= 1}
           className="gap-1.5 font-mono text-xs"
-          onClick={goToRandom}
+          onClick={() => {
+            if (flipped && currentItem) markDone();
+            else goToRandom();
+          }}
         >
           <RiShuffleLine className="h-3.5 w-3.5" />
           Random
@@ -560,9 +438,11 @@ export function ReviewPage() {
         <Button
           variant="outline"
           size="sm"
-          disabled={currentIndex >= queue.length - 1}
           className="gap-1.5 font-mono text-xs"
-          onClick={nextCard}
+          onClick={() => {
+            if (flipped && currentItem) markDone();
+            else nextCard();
+          }}
         >
           Next
           <RiArrowRightLine className="h-3.5 w-3.5" />
@@ -571,7 +451,7 @@ export function ReviewPage() {
 
       {/* Keyboard hint */}
       <p className="text-center font-mono text-xs text-muted-foreground/60">
-        Space = Flip · 1-4 = Rate · ← → = Navigate
+        Space = Flip · → = Next
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Word } from "@/data/words";
 import { ALL_WORDS } from "@/data/words";
+import { getUserWords } from "@/data/user-words";
 import { type SrsCard, getDueCards, submitReview as srsSubmit, ensureAllCards } from "@/data/srs-storage";
 
 export type { SrsCard };
@@ -59,8 +60,9 @@ export const useReviewStore = create<ReviewStore>((set, get) => ({
     }),
   fetchQueue: () => {
     set({ loading: true });
-    ensureAllCards(ALL_WORDS);
-    const due = getDueCards(ALL_WORDS);
+    const allWords = [...ALL_WORDS, ...getUserWords()];
+    ensureAllCards(allWords);
+    const due = getDueCards(allWords);
     set({
       queue: due,
       currentIndex: 0,

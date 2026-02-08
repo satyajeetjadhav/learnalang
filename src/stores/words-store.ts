@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type Word, getWordsByLang } from "@/data/words";
+import { type Word, getAllWordsByLang } from "@/data/words";
 import { ensureAllCards } from "@/data/srs-storage";
 
 export type { Word };
@@ -23,7 +23,7 @@ export const useWordsStore = create<WordsStore>((set, get) => ({
   setSelectedLang: (lang) => set({ selectedLang: lang }),
   fetchWords: () => {
     const { selectedLang } = get();
-    const words = getWordsByLang(selectedLang);
+    const words = getAllWordsByLang(selectedLang);
     ensureAllCards(words);
     set({ words, loading: false });
   },

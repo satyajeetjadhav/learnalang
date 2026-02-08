@@ -7,6 +7,91 @@ const LANG_NAMES: Record<string, string> = {
   bn: "Bangla",
 };
 
+const VOCAB_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "extract_vocabulary",
+    description:
+      "Extract new vocabulary words from the passage that are NOT in the learner's known word list.",
+    parameters: {
+      type: "object",
+      properties: {
+        vocabulary: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              targetWord: {
+                type: "string",
+                description: "The word in native script",
+              },
+              phoneticScript: {
+                type: "string",
+                description: "Romanized transliteration",
+              },
+              marathiAnchor: {
+                type: "string",
+                description: "Marathi equivalent in Devanagari",
+              },
+              hindiAnchor: {
+                type: "string",
+                description: "Hindi equivalent in Devanagari",
+              },
+              englishMeaning: {
+                type: "string",
+                description: "English translation",
+              },
+              category: {
+                type: "string",
+                description:
+                  "Category like FOOD, TRAVEL, GENERAL, GREETINGS, TECHNICAL",
+              },
+              grammar: {
+                type: "object",
+                properties: {
+                  pos: {
+                    type: "string",
+                    enum: [
+                      "noun",
+                      "verb",
+                      "adjective",
+                      "pronoun",
+                      "adverb",
+                      "number",
+                      "question",
+                      "particle",
+                      "phrase",
+                    ],
+                  },
+                  gender: {
+                    type: "string",
+                    enum: ["masculine", "feminine", "neuter"],
+                  },
+                  number: {
+                    type: "string",
+                    enum: ["singular", "plural"],
+                  },
+                },
+                required: ["pos"],
+              },
+            },
+            required: [
+              "targetWord",
+              "phoneticScript",
+              "marathiAnchor",
+              "hindiAnchor",
+              "englishMeaning",
+              "category",
+              "grammar",
+            ],
+          },
+        },
+      },
+      required: ["vocabulary"],
+    },
+  },
+};
+
 export async function POST(request: NextRequest) {
   const { lang, difficulty, topic, apiKey: clientKey } = await request.json();
 
@@ -119,7 +204,61 @@ The suggested topics must be diverse — don't repeat the current topic. Think a
       }
     }
 
-    return NextResponse.json({ text, suggestedTopics });
+    // ── Call 2: Extract structured vocabulary from the passage ──
+    let vocabulary: Record<string, unknown>[] = [];
+    try {
+      const vocabRes = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-5-mini",
+            messages: [
+              {
+                role: "system",
+                content: `You are a ${langName} vocabulary extractor. Given a ${langName} passage and a list of words the learner already knows, extract ONLY the new words that are NOT in the known list. Use the extract_vocabulary tool to return structured data. Only extract root words — skip inflected forms, particles, and punctuation. The learner speaks Marathi/Hindi, so provide accurate Marathi and Hindi equivalents.`,
+              },
+              {
+                role: "user",
+                content: `Known words: ${knownWordList}\n\nPassage:\n${text}`,
+              },
+            ],
+            tools: [VOCAB_TOOL],
+            tool_choice: {
+              type: "function",
+              function: { name: "extract_vocabulary" },
+            },
+            max_completion_tokens: 2048,
+          }),
+        }
+      );
+
+      if (vocabRes.ok) {
+        const vocabData = await vocabRes.json();
+        const toolCall =
+          vocabData.choices?.[0]?.message?.tool_calls?.[0] ??
+          vocabData.output?.find(
+            (o: { type: string }) => o.type === "function_call"
+          );
+
+        const argsStr =
+          toolCall?.function?.arguments ?? toolCall?.arguments ?? null;
+        if (argsStr) {
+          const parsed = JSON.parse(argsStr);
+          if (Array.isArray(parsed.vocabulary)) {
+            vocabulary = parsed.vocabulary;
+          }
+        }
+      }
+    } catch {
+      // Vocabulary extraction is non-critical — passage still works without it
+    }
+
+    return NextResponse.json({ text, suggestedTopics, vocabulary });
   } catch (err) {
     return NextResponse.json(
       { error: "Failed to connect to OpenAI" },

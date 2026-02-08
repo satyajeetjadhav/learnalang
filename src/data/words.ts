@@ -179,6 +179,17 @@ export function getWordsByLang(lang: string | null): Word[] {
   return ALL_WORDS.filter((w) => w.targetLang === lang);
 }
 
+export function getAllWordsByLang(lang: string | null): Word[] {
+  // Lazy import to avoid circular deps at module level
+  const { getUserWords } = require("./user-words") as typeof import("./user-words");
+  const userWords = getUserWords();
+  const combined = [...ALL_WORDS, ...userWords];
+  if (!lang) return combined;
+  return combined.filter((w) => w.targetLang === lang);
+}
+
 export function getWordById(id: string): Word | undefined {
-  return ALL_WORDS.find((w) => w.id === id);
+  const { getUserWords } = require("./user-words") as typeof import("./user-words");
+  const all = [...ALL_WORDS, ...getUserWords()];
+  return all.find((w) => w.id === id);
 }

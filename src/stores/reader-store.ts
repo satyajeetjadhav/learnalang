@@ -1,5 +1,8 @@
 import { create } from "zustand";
 import { useSettingsStore } from "./settings-store";
+import type { Word } from "@/data/words";
+import { addUserWord, hasUserWord } from "@/data/user-words";
+import { ensureCard } from "@/data/srs-storage";
 
 export interface ReaderSession {
   id: string;
@@ -7,6 +10,7 @@ export interface ReaderSession {
   difficulty: string;
   topic: string;
   text: string;
+  newVocab?: Word[];
   createdAt: number;
 }
 
@@ -55,12 +59,16 @@ interface ReaderStore {
   loading: boolean;
   sessions: ReaderSession[];
   aiTopics: Record<string, SuggestedTopic[]>;
+  newVocab: Word[];
+  savedWordIds: Set<string>;
   setSelectedLang: (lang: string) => void;
   setDifficulty: (d: string) => void;
   setTopic: (t: string) => void;
   generateStory: () => Promise<void>;
   loadSession: (session: ReaderSession) => void;
   deleteSession: (id: string) => void;
+  saveWord: (word: Word) => void;
+  saveAllNewWords: () => void;
 }
 
 export const useReaderStore = create<ReaderStore>((set, get) => ({
@@ -71,13 +79,15 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
   loading: false,
   sessions: loadSessions(),
   aiTopics: loadAiTopics(),
+  newVocab: [],
+  savedWordIds: new Set<string>(),
   setSelectedLang: (lang) => set({ selectedLang: lang }),
   setDifficulty: (d) => set({ difficulty: d }),
   setTopic: (t) => set({ topic: t }),
   generateStory: async () => {
     const { selectedLang, difficulty, topic } = get();
     const apiKey = useSettingsStore.getState().openaiApiKey;
-    set({ loading: true, generatedText: "" });
+    set({ loading: true, generatedText: "", newVocab: [], savedWordIds: new Set() });
     try {
       const res = await fetch("/api/reader/generate", {
         method: "POST",
@@ -91,12 +101,36 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
       });
       if (res.ok) {
         const data = await res.json();
+
+        // Parse vocabulary from API response into Word objects
+        const vocab: Word[] = Array.isArray(data.vocabulary)
+          ? data.vocabulary.map(
+              (v: Record<string, unknown>, i: number) => ({
+                id: `user-${selectedLang}-${Date.now()}-${i}`,
+                targetLang: selectedLang,
+                targetWord: v.targetWord as string,
+                phoneticScript: (v.phoneticScript as string) ?? null,
+                marathiAnchor: (v.marathiAnchor as string) ?? null,
+                hindiAnchor: (v.hindiAnchor as string) ?? null,
+                englishMeaning: (v.englishMeaning as string) ?? "",
+                category: (v.category as string) ?? null,
+                grammar: (v.grammar as Word["grammar"]) ?? null,
+              })
+            )
+          : [];
+
+        // Filter out words that are already saved by the user
+        const unsavedVocab = vocab.filter(
+          (w) => !hasUserWord(w.targetWord, w.targetLang)
+        );
+
         const session: ReaderSession = {
           id: crypto.randomUUID(),
           lang: selectedLang,
           difficulty,
           topic,
           text: data.text,
+          newVocab: vocab,
           createdAt: Date.now(),
         };
         const sessions = [session, ...get().sessions];
@@ -119,7 +153,21 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
           }
         }
 
-        set({ generatedText: data.text, loading: false, sessions, aiTopics });
+        // Detect which vocab words were already saved previously
+        const alreadySaved = new Set(
+          vocab
+            .filter((w) => hasUserWord(w.targetWord, w.targetLang))
+            .map((w) => w.id)
+        );
+
+        set({
+          generatedText: data.text,
+          loading: false,
+          sessions,
+          aiTopics,
+          newVocab: vocab,
+          savedWordIds: alreadySaved,
+        });
       } else {
         const data = await res.json().catch(() => null);
         set({
@@ -136,16 +184,42 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
     }
   },
   loadSession: (session) => {
+    const vocab = session.newVocab ?? [];
+    const alreadySaved = new Set(
+      vocab
+        .filter((w) => hasUserWord(w.targetWord, w.targetLang))
+        .map((w) => w.id)
+    );
     set({
       selectedLang: session.lang,
       difficulty: session.difficulty,
       topic: session.topic,
       generatedText: session.text,
+      newVocab: vocab,
+      savedWordIds: alreadySaved,
     });
   },
   deleteSession: (id) => {
     const sessions = get().sessions.filter((s) => s.id !== id);
     saveSessions(sessions);
     set({ sessions });
+  },
+  saveWord: (word) => {
+    addUserWord(word);
+    ensureCard(word.id);
+    set((state) => ({
+      savedWordIds: new Set([...state.savedWordIds, word.id]),
+    }));
+  },
+  saveAllNewWords: () => {
+    const { newVocab, savedWordIds } = get();
+    const unsaved = newVocab.filter((w) => !savedWordIds.has(w.id));
+    for (const word of unsaved) {
+      addUserWord(word);
+      ensureCard(word.id);
+    }
+    set({
+      savedWordIds: new Set(newVocab.map((w) => w.id)),
+    });
   },
 }));

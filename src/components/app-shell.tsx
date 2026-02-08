@@ -75,7 +75,7 @@ export function AppShell() {
       <div className="hidden md:block">
         <Sidebar />
       </div>
-      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-16 md:pb-0">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           <PageComponent />
         </div>
