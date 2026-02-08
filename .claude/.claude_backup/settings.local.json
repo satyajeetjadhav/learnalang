@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(gh api:*)",
+      "Bash(ralph --help:*)",
+      "Bash(./install.sh:*)",
+      "Bash(arch:*)",
+      "Bash(ralph-import:*)",
+      "Bash(ralph-enable-ci:*)",
+      "Bash(tmux:*)",
+      "Bash(kill:*)"
+    ]
+  }
+}
