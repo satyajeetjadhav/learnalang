@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Page = "dashboard" | "words" | "review" | "reader";
+export type Page = "dashboard" | "words" | "review" | "reader" | "modules";
 
 interface NavigationStore {
   currentPage: Page;

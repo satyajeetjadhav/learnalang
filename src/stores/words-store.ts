@@ -1,28 +1,17 @@
 import { create } from "zustand";
+import { type Word, getWordsByLang } from "@/data/words";
+import { ensureAllCards } from "@/data/srs-storage";
 
-export interface Word {
-  id: string;
-  targetLang: string;
-  targetWord: string;
-  phoneticScript: string | null;
-  marathiAnchor: string | null;
-  hindiAnchor: string | null;
-  englishMeaning: string;
-  category: string | null;
-  audioUrl: string | null;
-  createdAt: string;
-}
+export type { Word };
 
 interface WordsStore {
   words: Word[];
   loading: boolean;
   searchQuery: string;
   selectedLang: string | null;
-  setWords: (words: Word[]) => void;
-  setLoading: (loading: boolean) => void;
   setSearchQuery: (query: string) => void;
   setSelectedLang: (lang: string | null) => void;
-  fetchWords: () => Promise<void>;
+  fetchWords: () => void;
 }
 
 export const useWordsStore = create<WordsStore>((set, get) => ({
@@ -30,16 +19,12 @@ export const useWordsStore = create<WordsStore>((set, get) => ({
   loading: false,
   searchQuery: "",
   selectedLang: null,
-  setWords: (words) => set({ words }),
-  setLoading: (loading) => set({ loading }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedLang: (lang) => set({ selectedLang: lang }),
-  fetchWords: async () => {
-    set({ loading: true });
-    const lang = get().selectedLang;
-    const url = lang ? `/api/words?lang=${lang}` : "/api/words";
-    const res = await fetch(url);
-    const data = await res.json();
-    set({ words: data, loading: false });
+  fetchWords: () => {
+    const { selectedLang } = get();
+    const words = getWordsByLang(selectedLang);
+    ensureAllCards(words);
+    set({ words, loading: false });
   },
 }));

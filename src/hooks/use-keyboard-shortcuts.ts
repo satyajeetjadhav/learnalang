@@ -8,6 +8,7 @@ const PAGE_SHORTCUTS: Record<string, Page> = {
   "2": "words",
   "3": "review",
   "4": "reader",
+  "5": "modules",
 };
 
 export function useKeyboardShortcuts() {
@@ -15,13 +16,43 @@ export function useKeyboardShortcuts() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Don't trigger shortcuts if user is typing in an input
       const target = e.target as HTMLElement;
-      if (
+      const isInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+        target.isContentEditable;
+
+      // Cmd+K / Ctrl+K to focus search (works even in inputs)
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>(
+          '[data-search-input]'
+        );
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+        return;
+      }
+
+      // Escape from search input to blur
+      if (e.key === "Escape" && isInput) {
+        (target as HTMLElement).blur();
+        return;
+      }
+
+      // Don't trigger nav shortcuts if user is typing in an input
+      if (isInput) return;
+
+      // / key to focus search (vim-style)
+      if (e.key === "/") {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>(
+          '[data-search-input]'
+        );
+        if (searchInput) {
+          searchInput.focus();
+        }
         return;
       }
 

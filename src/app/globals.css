@@ -45,6 +45,10 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --color-amber-warm: oklch(0.82 0.16 75);
+  --color-kannada: oklch(0.78 0.15 55);
+  --color-malayalam: oklch(0.78 0.14 160);
+  --color-bangla: oklch(0.80 0.13 230);
 }
 
 :root {
@@ -83,36 +87,36 @@
 }
 
 .dark {
-  --background: oklch(0.13 0.004 285.823);
-  --foreground: oklch(0.93 0.005 90);
-  --card: oklch(0.18 0.005 285.885);
-  --card-foreground: oklch(0.93 0.005 90);
-  --popover: oklch(0.18 0.005 285.885);
-  --popover-foreground: oklch(0.93 0.005 90);
+  --background: oklch(0.105 0.005 280);
+  --foreground: oklch(0.93 0.01 80);
+  --card: oklch(0.145 0.006 280);
+  --card-foreground: oklch(0.93 0.01 80);
+  --popover: oklch(0.145 0.006 280);
+  --popover-foreground: oklch(0.93 0.01 80);
   --primary: oklch(0.82 0.16 75);
-  --primary-foreground: oklch(0.16 0.005 285.885);
-  --secondary: oklch(0.22 0.006 286.033);
-  --secondary-foreground: oklch(0.93 0.005 90);
-  --muted: oklch(0.22 0.006 286.033);
-  --muted-foreground: oklch(0.62 0.015 286.067);
+  --primary-foreground: oklch(0.12 0.005 280);
+  --secondary: oklch(0.19 0.007 280);
+  --secondary-foreground: oklch(0.93 0.01 80);
+  --muted: oklch(0.19 0.007 280);
+  --muted-foreground: oklch(0.68 0.015 280);
   --accent: oklch(0.82 0.16 75);
-  --accent-foreground: oklch(0.16 0.005 285.885);
+  --accent-foreground: oklch(0.12 0.005 280);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.82 0.16 75);
   --chart-1: oklch(0.82 0.16 75);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.11 0.004 285.885);
-  --sidebar-foreground: oklch(0.85 0.01 90);
+  --sidebar: oklch(0.085 0.005 280);
+  --sidebar-foreground: oklch(0.88 0.01 80);
   --sidebar-primary: oklch(0.82 0.16 75);
-  --sidebar-primary-foreground: oklch(0.16 0.005 285.885);
-  --sidebar-accent: oklch(0.22 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.93 0.005 90);
-  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-primary-foreground: oklch(0.12 0.005 280);
+  --sidebar-accent: oklch(0.19 0.007 280);
+  --sidebar-accent-foreground: oklch(0.93 0.01 80);
+  --sidebar-border: oklch(1 0 0 / 14%);
   --sidebar-ring: oklch(0.82 0.16 75);
 }
 
@@ -123,4 +127,105 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Grain overlay for depth */
+.grain-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Flashcard flip */
+.flip-card {
+  perspective: 1000px;
+}
+.flip-card-inner {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.flip-card-inner.flipped {
+  transform: rotateY(180deg);
+}
+.flip-card-front,
+.flip-card-back {
+  backface-visibility: hidden;
+}
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 10%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 18%);
+}
+
+/* Stagger animation for lists */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out forwards;
+  opacity: 0;
+}
+
+/* Script glow for target language text */
+.script-glow {
+  text-shadow: 0 0 20px oklch(0.82 0.16 75 / 20%);
+}
+
+/* Keyboard shortcut indicator pulse */
+@keyframes kbd-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+.kbd-hint {
+  animation: kbd-pulse 2s ease-in-out infinite;
+}
+
+/* Card slide transition for review */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+.animate-card-enter {
+  animation: card-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Rating button success flash */
+@keyframes rating-flash {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.rating-pressed {
+  animation: rating-flash 0.15s ease-out;
 }
