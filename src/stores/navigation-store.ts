@@ -10,7 +10,7 @@ interface NavigationStore {
 }
 
 export const useNavigationStore = create<NavigationStore>((set) => ({
-  currentPage: "dashboard",
+  currentPage: "reader",
   sidebarCollapsed: false,
   setPage: (page) => set({ currentPage: page }),
   toggleSidebar: () =>
