@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useReaderStore } from "@/stores/reader-store";
+import { useNavigationStore } from "@/stores/navigation-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -328,6 +329,7 @@ function NewWordsStrip() {
   const savedWordIds = useReaderStore((s) => s.savedWordIds);
   const saveWord = useReaderStore((s) => s.saveWord);
   const saveAllNewWords = useReaderStore((s) => s.saveAllNewWords);
+  const setPage = useNavigationStore((s) => s.setPage);
 
   const unsavedCount = newVocab.filter((w) => !savedWordIds.has(w.id)).length;
   const allSaved = unsavedCount === 0;
@@ -364,6 +366,15 @@ function NewWordsStrip() {
               All saved
             </span>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setPage("words")}
+          >
+            <RiBookOpenLine className="h-3.5 w-3.5" />
+            Browse Word List
+          </Button>
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {newVocab.map((w) => {

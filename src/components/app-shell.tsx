@@ -1,6 +1,7 @@
 "use client";
 
 import { useNavigationStore, type Page } from "@/stores/navigation-store";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { Sidebar } from "./sidebar";
 import { Dashboard } from "./dashboard";
@@ -8,6 +9,7 @@ import { WordBrowser } from "./word-browser";
 import { ReviewPage } from "./review-page";
 import { ReaderPage } from "./reader-page";
 import { LanguageModules } from "./language-modules";
+import { Onboarding } from "./onboarding";
 import {
   RiDashboardLine,
   RiBookOpenLine,
@@ -68,7 +70,12 @@ function MobileNav() {
 export function AppShell() {
   useKeyboardShortcuts();
   const currentPage = useNavigationStore((s) => s.currentPage);
+  const onboardingCompleted = useOnboardingStore((s) => s.completed);
   const PageComponent = PAGE_COMPONENTS[currentPage];
+
+  if (!onboardingCompleted) {
+    return <Onboarding />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
