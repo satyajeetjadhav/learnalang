@@ -42,6 +42,10 @@ yarn-error.log*
 .ralph/
 .ralphrc
 
+# service worker (generated at build)
+public/sw*
+public/swe-worker*
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
