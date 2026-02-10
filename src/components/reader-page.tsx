@@ -26,7 +26,9 @@ import {
   RiAddLine,
   RiCheckLine,
   RiBookOpenLine,
+  RiWifiOffLine,
 } from "react-icons/ri";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import { InteractiveText } from "./interactive-text";
 import type { ReaderSession } from "@/stores/reader-store";
 import { READER_TOPICS } from "@/data/reader-topics";
@@ -70,6 +72,8 @@ export function ReaderPage() {
     saveWord,
     saveAllNewWords,
   } = useReaderStore();
+
+  const isOnline = useOnlineStatus();
 
   // Split the generated text into sections (native, transliteration, translation)
   const sections = generatedText
@@ -141,18 +145,26 @@ export function ReaderPage() {
               />
             </div>
 
-            <Button
-              onClick={generateStory}
-              disabled={loading}
-              className="gap-2 font-mono text-xs"
-            >
-              {loading ? (
-                <RiLoader4Line className="h-4 w-4 animate-spin" />
-              ) : (
-                <RiMagicLine className="h-4 w-4" />
+            <div className="flex items-center gap-2">
+              {!isOnline && (
+                <span className="flex items-center gap-1 font-mono text-[10px] text-amber-400">
+                  <RiWifiOffLine className="h-3.5 w-3.5" />
+                  Offline
+                </span>
               )}
-              Generate
-            </Button>
+              <Button
+                onClick={generateStory}
+                disabled={loading || !isOnline}
+                className="gap-2 font-mono text-xs"
+              >
+                {loading ? (
+                  <RiLoader4Line className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RiMagicLine className="h-4 w-4" />
+                )}
+                Generate
+              </Button>
+            </div>
           </div>
 
           {/* Difficulty hint */}

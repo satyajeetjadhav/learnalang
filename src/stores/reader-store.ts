@@ -85,6 +85,14 @@ export const useReaderStore = create<ReaderStore>((set, get) => ({
   setDifficulty: (d) => set({ difficulty: d }),
   setTopic: (t) => set({ topic: t }),
   generateStory: async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      set({
+        generatedText:
+          "You're offline. Connect to the internet to generate new passages. Your past sessions are still available below.",
+        loading: false,
+      });
+      return;
+    }
     const { selectedLang, difficulty, topic } = get();
     const apiKey = useSettingsStore.getState().openaiApiKey;
     set({ loading: true, generatedText: "", newVocab: [], savedWordIds: new Set() });
